@@ -1,0 +1,109 @@
+Reference:
+Hongyun Cai, Vincent W. Zheng, Fanwei Zhu, Kevin Chen-Chuan Chang, Zi Huang, From Community Detection to Community Profiling. In VLDB 2017. Volume 10, Issue 7.
+
+This java project implements the CPD model proposed in the above paper. 
+Please refer the above paper for all the notations in this readme file. 
+If you use it for scientific experiments, please cite this paper:
+@article{CaiZZCH17,
+ author = {Cai, Hongyun and Zheng, Vincent W. and Zhu, Fanwei and Chang, Kevin Chen-Chuan and Huang, Zi},
+ title = {From Community Detection to Community Profiling},
+ journal = {PVLDB},
+ volume = {10},
+ number = {7},
+ year = {2017}
+} 
+
+The code has been tested under Ubuntu 16.04 LTS with Intel Xeon(R) CPU E5-1620 @3.50GHz*8 and 16G memory.
+
+============== *** Dataset input*** ============== 
+1. Two datasets: twitter and dblp
+2. the input for CPD is put in "data/dataset_name/input", e.g., "data/twitter/input"
+3. For input, we split the whole dataset into 10 parts, and we run CPD for 10 times. Each time we use 10% for testing and the rest 90% for training. For each run, the input files are put in train+trainnumber, e.g., "data/twitter/input/train0". Take train0 (twitter) for example, the input files include:
+	3.1 tRefIx0.txt
+	    Describe: the diffusion link id for the first diffusion link of each user, one line per user, 1st line corresponds to 1st user, and so on. This is to calculate the augmented variable for all diffusion links. (i.e., we assign each diffusion links a id, and this file record the id for the first diffusion link of each user.)
+	    Format: a int per line, the number of lines is the number of users.
+	3.2 uRefIx0.txt
+	    Describe: the friendship link id for the first friendship link of each user, one line per user, 1 st line corresponds to 1st user, and so on. This is to calculate the augmented variable for all friendship links. (i.e., we assign each diffusion links a id, and this file record the id for the first diffusion link of each user.)
+	    Format: a int per line, the number of lines is the number of users.
+	3.3 retweet0.txt
+	    Describe: record the list of diffusion links. This is to skip the probability of noretweet when sample community and topic for efficiency improvements.
+	    Format: userId \t userTweetIndex, one diffusion link per line, meaning the userTweetIndex-th tweet from user userId is a document diffused from others. (In twitter, it is a retweet; in dblp, it cites other papers)
+	3.4 alltweets_train0.txt
+	    Describe: all documents for training. In Twitter, it includes the tweets, retweets and friendship links; in dblp, it includes paper titles, citations and co-authership links. One user per line.
+	    Format: doc1Time \t doc1Words [diffusionSourceUserId1 \t diffusionSourceDocIndex1 \t diffusionSourceUserId2 \t diffusionSourceDocIndex2]; doc2Time \t doc2Words [diffusionSourceUserId1 \t diffusionSourceDocIndex1 \t diffusionSourceUserId2 \t diffusionSourceDocIndex2]; ... "[]" means if any, i.e., if current doc retweets/cites other document(s), we record the user and document index of the source doc. Note that the number of source doc in twitter is at most one, while in dblp there could be multiple source docs.
+	    Example: 1	1 2 3 4 5	7	0	18	1; 0 0 1 2 5 6, means current user has two papers, the first paper is published at timestamp 1, the paper title is "1 2 3 4 5" (wordid), it cites two papers, which are user 7's 1st paper (all index start from 0 in the input files) and user 18's 2nd paper. The second paper is published at timestamp 0, with the paper tile "0 1 2 3 6", and it doesn't cite any paper.
+	3.5 uunetwork_train0.txt
+	    Describe: record the list of users each user follow/co-author. One line per user.
+	    Format: userId \t followee1UserId,followee2UserId,...
+	3.6 tp.txt
+	    Describe: the individual feature of each diffusion link. One line per diffusion link. Each dimension is describe in our paper Section 3.1. The vector is normalized.
+	    Format: reciver's #followers/#followees, reciver's #retweets/#tweets, sender's #followers/#followees, sender's #retweets/#tweets
+	3.7 negavs.txt
+	    Describe: record the list of users for negative instances of logitic regression training. One user for each diffusion link, they are sampled from the users whom the owner of the diffusion link never retweet from. One line per diffusion link.
+	    Format: userId
+	3.8 tn.txt
+	    Describe: the individual feature of each negative diffusion link. One line per negative diffusion link. The negative sender is recorded in negavs.txt. The vector is normalized.
+	    Format: reciver's #followers/#followees, reciver's #retweets/#tweets, negative sender's #followers/#followees, negative sender's #retweets/#tweets	
+	3.9 Note, the file names for dblp and twitter are slightly different, here is the mapping of name in twitter and name in dblp. tRefIx0.txt (same), uRefIx0.txt (same), retweet0.txt <-> noretweet0.txt (in dblp, diffusion links are much more than in twitter, hence in dblp, we record the list of noretweet instead), alltweets_train0.txt <-> papers_train0.txt, uunetwork_train0.txt (same)
+	
+	3.10 there are some files not changed for different train, we put them in the input root folder (i.e., "data/twitter/input")
+		3.10.1 ugroups.txt 
+		      Describe: we parallize our program using multi-thread implementation, this file records the data split for parallization (we split documents by users, each thread will process the documents from a certain set of users). Each line is a list of userids, recording the list of users a thread process. One line per thread. 
+		      Format: userId1,userId2,...
+
+Note: the two datasets are too big to upload, they are two public datasets available at [1] and [2].
+[1] https://wiki.illinois.edu//wiki/display/forward/Dataset-UDI-TwitterCrawl-Aug2012
+[2] https://aminer.org/billboard/citation
+We generate a toy data example, named "toy" in "data" folder. You can run it by command "java -cp bin/:lib/trove-3.1a1.jar:lib/liblinear-java-1.95.jar cpdtoy.CommunityLDA 2" (community number =2; or "java -cp bin/:lib/trove-3.1a1.jar:lib/liblinear-java-1.95.jar cpdtoy.CommunityLDA 2", community number=3)
+The toy data is illustrated in our paper, figure 1.
+We generate the results for both C=2 and C=3. The detailed output files can be found in folder "data/toy/output/C2(or C3)/iter200/". In each folder, we add one figure to explain the user community assignment file (model.pai).
+
+
+============== *** Program Running *** ============== 
+1. Command: 
+1.1 Run on twitter:
+java -Xmx12G -cp bin/:lib/trove-3.1a1.jar:lib/liblinear-java-1.95.jar cpdtwitter.CommunityLDA 0 50
+1.2 Run on dblp
+java -Xmx15G -cp bin/:lib/trove-3.1a1.jar:lib/liblinear-java-1.95.jar cpddblp.CommunityLDA 0 50
+	
+2. The two main program (for twitter and for dblp) is in
+	1.1 src/cpdtwitter/CommunityLDA
+	1.2 src/cpddblp/CommunityLDA
+3. The program takes two parameters
+	2.1 the number for train, range from [0,9]
+	2.2 the number of communities to detect, it can be arbitrary int values bigger than 0, in our paper, we test {20, 50, 100, 150}
+4. In our experiment we set the number of topics to detect the same as the number of communities, it can be easily changed at line 45 in the two main program file ("CommunityLDA.java"), i.e., Set the value for T. The number of iterations for Gibbs Sampling is by default 1000. It can ve changed at line 40 in COmmunityLDA.java, i.e., set the value for iteration;
+5. All the other model parameters (alpha, beta, rho) can be set either in CommunityLDA.main or Model.Model.
+
+
+============== *** Program output *** ============== 	
+1. the output for CPD is put in "data/dataset_name/output/train+trainnumber/C+#community/iter+iternumber", e.g., "data/twitter/output/train0/C50/iter1000"
+2. There are output files for CPD model, include
+	2.1 model.C
+	    Community assignment for every document from each user. One user per line, a community assignment id (range [0,|C|)) for each document, separated by 'tab'.
+	2.2 model.Z
+	    Topic assignment for every document from each user. One user per line, a topic assignment id (range [0,|Z|)) for each document, separated by 'tab'.
+	2.3 model.nct
+	    Counters for community-topic pairs. A |C|*|Z| matrix, a row corresponds to a community, a column corresponds to a topic, the matrix element records the number of time a document is assigned to the corresponding topic and community at the same time.
+	2.4 model.theta
+	    Model parameter theta, multinomial distribution over topics for communities. 
+	2.5 model.ntw
+	    Counters for topic-words pairs. A |Z|*|W| matrix, a row corresponds to a topic, a column corresponds to a word, the matrix element records the number of time a word is assigned to the corresponding topic.
+	2.6 model.vPhi
+	    Model parameter vPhi, multinomial distribution over words for topics.
+	2.7 model.nuc
+	    Counters for user-community pairs. A |U|*|C| matrix, a row corresponds to a user, a column corresponds to a community, the matrix element records the number of time a user is assigned to the corresponding community.
+	2.8 model.pai
+	    Model parameter pai, multinomial distribution over communities for users.
+	2.9 model.eta
+	    The community level diffusion profile. A |Z|*|C|*|C| matrix. 
+	2.10 model.nu
+	    The individual diffusion preference parameter.
+	2.11 model.delta
+	    Augmented variable for diffusion link probability calculation.
+	2.12 model.lambda
+	    Augmented variable for friendship link probability calculation.
+	2.13 model.popu
+	    Counters for topic-timestamp pairs. A |Z|*|T| matrix, a row corresponds to a topic, a column corresponds to a timestamp, the matrix element records the number of time a document published at a timestamp is assigned to the corresponding topic.
+	    
+
