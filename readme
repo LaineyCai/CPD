@@ -1,7 +1,7 @@
-Reference:
+# From Community Detection to Community Profiling
+This is a java project which implements the CPD model proposed in below paper. 
 Hongyun Cai, Vincent W. Zheng, Fanwei Zhu, Kevin Chen-Chuan Chang, Zi Huang, From Community Detection to Community Profiling. In VLDB 2017. Volume 10, Issue 7.
 
-This java project implements the CPD model proposed in the above paper. 
 Please refer the above paper for all the notations in this readme file. 
 If you use it for scientific experiments, please cite this paper:
 @article{CaiZZCH17,
